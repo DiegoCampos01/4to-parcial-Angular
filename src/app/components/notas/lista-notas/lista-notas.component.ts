@@ -7,6 +7,8 @@ import { Router, RouterLink } from '@angular/router';
 import { NotasService, Nota } from '../../../services/notas.service';
 import { AlumnosService } from '../../../services/alumnos.service';
 import { CursosService } from '../../../services/cursos.service';
+import { InscripcionesService } from '../../../services/inscripciones.service';
+import { forkJoin, map, switchMap } from 'rxjs';
 
 interface NotaConDetalles extends Nota {
   nombreAlumno: string;
@@ -44,7 +46,8 @@ interface NotaConDetalles extends Nota {
         <ng-container matColumnDef="calificacion">
           <th mat-header-cell *matHeaderCellDef>Calificación</th>
           <td mat-cell *matCellDef="let nota" [ngClass]="getCalificacionColor(nota.calificacion)">
-            {{nota.calificacion}} - {{getCalificacionEstado(nota.calificacion)}}
+            {{nota.calificacion === 0 ? 'Sin calificar' : nota.calificacion}} 
+            {{nota.calificacion > 0 ? '- ' + getCalificacionEstado(nota.calificacion) : ''}}
           </td>
         </ng-container>
 
@@ -79,6 +82,10 @@ interface NotaConDetalles extends Nota {
     .danger {
       color: red;
     }
+    .pending {
+      color: gray;
+      font-style: italic;
+    }
   `]
 })
 export class ListaNotasComponent implements OnInit {
@@ -89,6 +96,7 @@ export class ListaNotasComponent implements OnInit {
     private notasService: NotasService,
     private alumnosService: AlumnosService,
     private cursosService: CursosService,
+    private inscripcionesService: InscripcionesService,
     private router: Router
   ) {}
 
@@ -97,20 +105,37 @@ export class ListaNotasComponent implements OnInit {
   }
 
   cargarNotas(): void {
-    this.notasService.getNotas().subscribe(notas => {
-      this.notasConDetalles = notas.map(nota => {
-        const alumno = this.alumnosService.getAlumnoById(nota.alumnoId);
-        const curso = this.cursosService.getCursoById(nota.cursoId);
+    // Primero obtenemos todas las inscripciones
+    this.inscripcionesService.getInscripciones().subscribe(inscripciones => {
+      // Por cada inscripción, creamos o recuperamos una nota
+      const notasPromesas = inscripciones.map(inscripcion => {
+        const alumno = this.alumnosService.getAlumnoById(inscripcion.alumnoId);
+        const curso = this.cursosService.getCursoById(inscripcion.cursoId);
+        
+        // Si no existe una nota, creamos una con calificación 0
+        let nota = this.notasService.getNotaPorAlumnoYCurso(inscripcion.alumnoId, inscripcion.cursoId);
+        if (!nota) {
+          nota = {
+            alumnoId: inscripcion.alumnoId,
+            cursoId: inscripcion.cursoId,
+            calificacion: 0
+          };
+          this.notasService.guardarNota(nota);
+        }
+
         return {
           ...nota,
           nombreAlumno: alumno ? `${alumno.nombre} ${alumno.apellido}` : 'Alumno no encontrado',
           nombreCurso: curso ? curso.nombre : 'Curso no encontrado'
         };
       });
+
+      this.notasConDetalles = notasPromesas;
     });
   }
 
   getCalificacionColor(calificacion: number): string {
+    if (calificacion === 0) return 'pending';
     return calificacion >= 3.0 ? 'success' : 'danger';
   }
 

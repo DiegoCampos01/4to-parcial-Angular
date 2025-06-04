@@ -1,13 +1,15 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatCardModule } from '@angular/material/card';
-import { AuthService } from '../../../../core/services/auth.service';
+import { Store } from '@ngrx/store';
+import { AppState } from '../../../../store/app.state';
+import * as AuthActions from '../../../../store/auth/auth.actions';
+import * as AuthSelectors from '../../../../store/auth/auth.selectors';
 
 @Component({
   selector: 'app-login',
@@ -33,12 +35,12 @@ import { AuthService } from '../../../../core/services/auth.service';
           <mat-card-content>
             <div class="credentials-section">
               <h3>Administrador</h3>
-              <p><strong>Usuario:</strong> admin</p>
+              <p><strong>Usuario:</strong> admin&#64;admin.com</p>
               <p><strong>Contraseña:</strong> admin123</p>
             </div>
             <div class="credentials-section">
               <h3>Usuario Normal</h3>
-              <p><strong>Usuario:</strong> user</p>
+              <p><strong>Usuario:</strong> usuario&#64;usuario.com</p>
               <p><strong>Contraseña:</strong> user123</p>
             </div>
           </mat-card-content>
@@ -61,9 +63,15 @@ import { AuthService } from '../../../../core/services/auth.service';
             </mat-error>
           </mat-form-field>
 
-          <button mat-raised-button color="primary" type="submit" [disabled]="loginForm.invalid" class="full-width">
-            Ingresar
+          <button mat-raised-button color="primary" type="submit" 
+                  [disabled]="loginForm.invalid || (loading$ | async)" 
+                  class="full-width">
+            {{ (loading$ | async) ? 'Iniciando sesión...' : 'Ingresar' }}
           </button>
+
+          <div *ngIf="error$ | async as error" class="error-message">
+            {{ error }}
+          </div>
         </form>
       </div>
     </div>
@@ -107,16 +115,21 @@ import { AuthService } from '../../../../core/services/auth.service';
     .credentials-section p {
       margin: 0.25rem 0;
     }
+    .error-message {
+      color: #f44336;
+      text-align: center;
+      margin-top: 1rem;
+    }
   `]
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
   loginForm: FormGroup;
+  loading$ = this.store.select(AuthSelectors.selectAuthLoading);
+  error$ = this.store.select(AuthSelectors.selectAuthError);
 
   constructor(
     private fb: FormBuilder,
-    private authService: AuthService,
-    private router: Router,
-    private snackBar: MatSnackBar
+    private store: Store<AppState>
   ) {
     this.loginForm = this.fb.group({
       username: ['', Validators.required],
@@ -124,17 +137,15 @@ export class LoginComponent {
     });
   }
 
+  ngOnInit(): void {
+    // Reset any previous error state
+    this.store.dispatch(AuthActions.loginFailure({ error: '' }));
+  }
+
   onSubmit(): void {
     if (this.loginForm.valid) {
       const { username, password } = this.loginForm.value;
-      this.authService.login(username, password).subscribe({
-        next: () => {
-          this.router.navigate(['/']);
-        },
-        error: (error) => {
-          this.snackBar.open('Error al iniciar sesión', 'Cerrar', { duration: 3000 });
-        }
-      });
+      this.store.dispatch(AuthActions.login({ username, password }));
     }
   }
 } 

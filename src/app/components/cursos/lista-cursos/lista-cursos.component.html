@@ -37,6 +37,18 @@
       <td mat-cell *matCellDef="let curso">{{curso.duracion}}</td>
     </ng-container>
 
+    <!-- Cupos Column -->
+    <ng-container matColumnDef="cupos">
+      <th mat-header-cell *matHeaderCellDef>Cupos</th>
+      <td mat-cell *matCellDef="let curso">
+        <div class="cupos-info">
+          <span>Disponibles: {{curso.cuposDisponibles}}</span>
+          <span>Inscritos: {{curso.alumnosInscritos}}</span>
+          <span>Total: {{curso.cupo}}</span>
+        </div>
+      </td>
+    </ng-container>
+
     <!-- Acciones Column -->
     <ng-container matColumnDef="acciones">
       <th mat-header-cell *matHeaderCellDef>Acciones</th>
@@ -56,4 +68,20 @@
     <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
     <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
   </table>
-</div> 
+</div>
+
+<style>
+.cupos-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cupos-info span {
+  font-size: 14px;
+}
+
+.mat-column-cupos {
+  min-width: 120px;
+}
+</style> 

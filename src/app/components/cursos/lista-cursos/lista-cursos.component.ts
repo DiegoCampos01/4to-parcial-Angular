@@ -6,6 +6,14 @@ import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 import { Curso } from '../../../models/curso.model';
 import { CursosService } from '../../../services/cursos.service';
+import { InscripcionesService } from '../../../services/inscripciones.service';
+import { map, switchMap } from 'rxjs/operators';
+import { combineLatest } from 'rxjs';
+
+interface CursoConCupos extends Curso {
+  cuposDisponibles: number;
+  alumnosInscritos: number;
+}
 
 @Component({
   selector: 'app-lista-cursos',
@@ -21,14 +29,34 @@ import { CursosService } from '../../../services/cursos.service';
   styleUrls: ['./lista-cursos.component.scss']
 })
 export class ListaCursosComponent implements OnInit {
-  displayedColumns: string[] = ['id', 'nombre', 'descripcion', 'profesor', 'duracion', 'acciones'];
-  cursos: Curso[] = [];
+  displayedColumns: string[] = ['id', 'nombre', 'descripcion', 'profesor', 'duracion', 'cupos', 'acciones'];
+  cursos: CursoConCupos[] = [];
 
-  constructor(private cursosService: CursosService) {}
+  constructor(
+    private cursosService: CursosService,
+    private inscripcionesService: InscripcionesService
+  ) {}
 
   ngOnInit(): void {
-    this.cursosService.getCursos().subscribe(cursos => {
-      this.cursos = cursos;
+    combineLatest([
+      this.cursosService.getCursos(),
+      this.inscripcionesService.getInscripciones()
+    ]).pipe(
+      map(([cursos, inscripciones]) => {
+        return cursos.map(curso => {
+          const inscripcionesCurso = inscripciones.filter(i => i.cursoId === curso.id);
+          const alumnosInscritos = inscripcionesCurso.length;
+          const cuposDisponibles = curso.cupo - alumnosInscritos;
+
+          return {
+            ...curso,
+            alumnosInscritos,
+            cuposDisponibles: cuposDisponibles >= 0 ? cuposDisponibles : 0
+          };
+        });
+      })
+    ).subscribe(cursosConCupos => {
+      this.cursos = cursosConCupos;
     });
   }
 

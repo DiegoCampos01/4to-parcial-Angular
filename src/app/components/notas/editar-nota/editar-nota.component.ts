@@ -1,11 +1,11 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
-import { ActivatedRoute, Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { NotasService } from '../../../services/notas.service';
 import { AlumnosService } from '../../../services/alumnos.service';
 import { CursosService } from '../../../services/cursos.service';
@@ -25,12 +25,14 @@ import { CursosService } from '../../../services/cursos.service';
     <div class="container">
       <mat-card>
         <mat-card-header>
-          <mat-card-title>Calificar Alumno</mat-card-title>
-          <mat-card-subtitle *ngIf="nombreAlumno && nombreCurso">
-            {{ nombreAlumno }} - {{ nombreCurso }}
-          </mat-card-subtitle>
+          <mat-card-title>Editar Nota</mat-card-title>
         </mat-card-header>
         <mat-card-content>
+          <div *ngIf="alumno && curso" class="info-section">
+            <p><strong>Alumno:</strong> {{alumno.nombre}} {{alumno.apellido}}</p>
+            <p><strong>Curso:</strong> {{curso.nombre}}</p>
+          </div>
+
           <form [formGroup]="notaForm" (ngSubmit)="onSubmit()">
             <mat-form-field appearance="outline" class="full-width">
               <mat-label>Calificación</mat-label>
@@ -47,9 +49,12 @@ import { CursosService } from '../../../services/cursos.service';
             </mat-form-field>
 
             <div class="button-container">
-              <button mat-button type="button" (click)="cancelar()">Cancelar</button>
-              <button mat-raised-button color="primary" type="submit" [disabled]="!notaForm.valid">
-                Guardar Calificación
+              <button mat-raised-button color="primary" type="submit" 
+                      [disabled]="notaForm.invalid">
+                Guardar
+              </button>
+              <button mat-button type="button" (click)="cancelar()">
+                Cancelar
               </button>
             </div>
           </form>
@@ -65,29 +70,35 @@ import { CursosService } from '../../../services/cursos.service';
     }
     .full-width {
       width: 100%;
-      margin-bottom: 20px;
+      margin-bottom: 1rem;
+    }
+    .info-section {
+      margin-bottom: 1.5rem;
+    }
+    .info-section p {
+      margin: 0.5rem 0;
     }
     .button-container {
       display: flex;
+      gap: 1rem;
       justify-content: flex-end;
-      gap: 10px;
     }
   `]
 })
 export class EditarNotaComponent implements OnInit {
   notaForm: FormGroup;
-  alumnoId: number | null = null;
-  cursoId: number | null = null;
-  nombreAlumno: string = '';
-  nombreCurso: string = '';
+  alumnoId!: number;
+  cursoId!: number;
+  alumno: any;
+  curso: any;
 
   constructor(
     private fb: FormBuilder,
-    private route: ActivatedRoute,
-    private router: Router,
     private notasService: NotasService,
     private alumnosService: AlumnosService,
-    private cursosService: CursosService
+    private cursosService: CursosService,
+    private router: Router,
+    private route: ActivatedRoute
   ) {
     this.notaForm = this.fb.group({
       calificacion: ['', [Validators.required, Validators.min(0), Validators.max(5)]]
@@ -95,38 +106,30 @@ export class EditarNotaComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.alumnoId = Number(this.route.snapshot.paramMap.get('alumnoId'));
-    this.cursoId = Number(this.route.snapshot.paramMap.get('cursoId'));
-
-    if (this.alumnoId && this.cursoId) {
-      const alumno = this.alumnosService.getAlumnoById(this.alumnoId);
-      const curso = this.cursosService.getCursoById(this.cursoId);
+    this.route.params.subscribe(params => {
+      this.alumnoId = +params['alumnoId'];
+      this.cursoId = +params['cursoId'];
       
-      if (alumno && curso) {
-        this.nombreAlumno = `${alumno.nombre} ${alumno.apellido}`;
-        this.nombreCurso = curso.nombre;
-        
-        const notaActual = this.notasService.getNotaPorAlumnoYCurso(this.alumnoId, this.cursoId);
-        if (notaActual) {
-          this.notaForm.patchValue({
-            calificacion: notaActual.calificacion
-          });
-        }
-      } else {
-        this.router.navigate(['/notas']);
+      this.alumno = this.alumnosService.getAlumnoById(this.alumnoId);
+      this.curso = this.cursosService.getCursoById(this.cursoId);
+      
+      const nota = this.notasService.getNotaPorAlumnoYCurso(this.alumnoId, this.cursoId);
+      if (nota) {
+        this.notaForm.patchValue({ calificacion: nota.calificacion });
       }
-    } else {
-      this.router.navigate(['/notas']);
-    }
+    });
   }
 
   onSubmit(): void {
-    if (this.notaForm.valid && this.alumnoId && this.cursoId) {
+    if (this.notaForm.valid) {
+      const calificacion = this.notaForm.get('calificacion')?.value;
+      
       this.notasService.guardarNota({
         alumnoId: this.alumnoId,
         cursoId: this.cursoId,
-        calificacion: this.notaForm.value.calificacion
+        calificacion
       });
+      
       this.router.navigate(['/notas']);
     }
   }

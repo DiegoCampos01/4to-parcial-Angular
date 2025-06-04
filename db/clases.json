@@ -1,0 +1,22 @@
+{
+  "clases": [
+    {
+      "id": 1,
+      "cursoId": 1,
+      "titulo": "Introducción al Álgebra",
+      "descripcion": "Primera clase de introducción a conceptos básicos",
+      "fecha": "2024-05-10T10:00:00",
+      "duracion": 120,
+      "aula": "A101"
+    },
+    {
+      "id": 2,
+      "cursoId": 2,
+      "titulo": "HTML y CSS Básico",
+      "descripcion": "Fundamentos de desarrollo web",
+      "fecha": "2024-05-11T14:00:00",
+      "duracion": 90,
+      "aula": "Lab 201"
+    }
+  ]
+} 

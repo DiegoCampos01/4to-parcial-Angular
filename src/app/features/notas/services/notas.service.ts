@@ -1,82 +1,61 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
-
-export interface Nota {
-  id: number;
-  alumnoId: number;
-  cursoId: number;
-  calificacion: number;
-  fecha: Date;
-}
+import { HttpClient } from '@angular/common/http';
+import { Observable, map } from 'rxjs';
+import { Nota } from '../models/nota.model';
+import { BaseService } from 'src/app/core/services/base.service';
 
 @Injectable({
   providedIn: 'root'
 })
-export class NotasService {
-  private readonly STORAGE_KEY = 'notas_data';
-  private notas: Nota[] = [];
-  private notasSubject = new BehaviorSubject<Nota[]>([]);
+export class NotasService extends BaseService<Nota> {
+  protected override storageKey = 'notas';
+  protected override endpoint = 'notas';
 
-  constructor() {
-    this.cargarNotas();
+  constructor(protected override http: HttpClient) {
+    super(http);
+    this.initializeService();
   }
 
-  private cargarNotas(): void {
-    const notasGuardadas = localStorage.getItem(this.STORAGE_KEY);
-    if (notasGuardadas) {
-      this.notas = JSON.parse(notasGuardadas).map((nota: any) => ({
-        ...nota,
-        fecha: new Date(nota.fecha)
-      }));
-    }
-    this.notasSubject.next(this.notas);
-  }
-
-  private guardarNotas(): void {
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.notas));
-    this.notasSubject.next(this.notas);
-  }
-
-  getNotas(): Observable<Nota[]> {
-    return this.notasSubject.asObservable();
-  }
-
-  getNotasPorAlumno(alumnoId: number): Nota[] {
-    return this.notas.filter(nota => nota.alumnoId === alumnoId);
-  }
-
-  getNotaPorAlumnoYCurso(alumnoId: number, cursoId: number): Nota | undefined {
-    return this.notas.find(nota => 
-      nota.alumnoId === alumnoId && nota.cursoId === cursoId
+  // Métodos específicos para notas
+  getNotasPorAlumno(alumnoId: number): Observable<Nota[]> {
+    return this.getDatos().pipe(
+      map(notas => notas.filter(nota => nota.alumnoId === alumnoId))
     );
   }
 
-  agregarNota(alumnoId: number, cursoId: number, calificacion: number): void {
-    const notaExistente = this.getNotaPorAlumnoYCurso(alumnoId, cursoId);
+  getNotasPorCurso(cursoId: number): Observable<Nota[]> {
+    return this.getDatos().pipe(
+      map(notas => notas.filter(nota => nota.cursoId === cursoId))
+    );
+  }
+
+  getNotaPorAlumnoYCurso(alumnoId: number, cursoId: number): Observable<Nota | undefined> {
+    return this.getDatos().pipe(
+      map(notas => notas.find(nota => 
+        nota.alumnoId === alumnoId && nota.cursoId === cursoId
+      ))
+    );
+  }
+
+  async agregarOActualizarNota(alumnoId: number, cursoId: number, calificacion: number): Promise<void> {
+    const notaExistente = await this.getNotaPorAlumnoYCurso(alumnoId, cursoId)
+      .pipe(map(nota => nota))
+      .toPromise();
 
     if (notaExistente) {
-      // Actualizar nota existente
-      notaExistente.calificacion = calificacion;
-      notaExistente.fecha = new Date();
+      await this.actualizar({
+        ...notaExistente,
+        calificacion,
+        fecha: new Date()
+      });
     } else {
-      // Crear nueva nota
-      const nuevoId = Math.max(...this.notas.map(n => n.id), 0) + 1;
-      const nuevaNota: Nota = {
-        id: nuevoId,
+      await this.agregar({
         alumnoId,
         cursoId,
         calificacion,
         fecha: new Date()
-      };
-      this.notas.push(nuevaNota);
+      });
     }
-
-    this.guardarNotas();
-  }
-
-  eliminarNota(id: number): void {
-    this.notas = this.notas.filter(nota => nota.id !== id);
-    this.guardarNotas();
   }
 
   getEstadoNota(calificacion: number): string {
@@ -85,5 +64,25 @@ export class NotasService {
 
   getColorNota(calificacion: number): string {
     return calificacion >= 3.0 ? 'success' : 'danger';
+  }
+
+  getPromedioAlumno(alumnoId: number): Observable<number> {
+    return this.getNotasPorAlumno(alumnoId).pipe(
+      map(notas => {
+        if (notas.length === 0) return 0;
+        const suma = notas.reduce((acc, nota) => acc + nota.calificacion, 0);
+        return suma / notas.length;
+      })
+    );
+  }
+
+  getPromedioCurso(cursoId: number): Observable<number> {
+    return this.getNotasPorCurso(cursoId).pipe(
+      map(notas => {
+        if (notas.length === 0) return 0;
+        const suma = notas.reduce((acc, nota) => acc + nota.calificacion, 0);
+        return suma / notas.length;
+      })
+    );
   }
 } 

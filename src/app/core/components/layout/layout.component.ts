@@ -6,7 +6,13 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { AuthService, User } from '../../services/auth.service';
+import { Store } from '@ngrx/store';
+import { AppState } from '../../../store/app.state';
+import * as AuthSelectors from '../../../store/auth/auth.selectors';
+import * as UiSelectors from '../../../store/ui/ui.selectors';
+import * as AuthActions from '../../../store/auth/auth.actions';
+import { User } from '../../services/auth.service';
+import { map } from 'rxjs/operators';
 
 @Component({
   selector: 'app-layout',
@@ -43,7 +49,7 @@ import { AuthService, User } from '../../services/auth.service';
             <mat-icon>grade</mat-icon>
             <span>Notas</span>
           </a>
-          <ng-container *ngIf="isAdmin">
+          <ng-container *ngIf="isAdmin$ | async">
             <a mat-list-item routerLink="/usuarios" routerLinkActive="active">
               <mat-icon>admin_panel_settings</mat-icon>
               <span>Usuarios</span>
@@ -59,7 +65,9 @@ import { AuthService, User } from '../../services/auth.service';
         <mat-toolbar color="primary">
           <span>Academia</span>
           <span class="toolbar-spacer"></span>
-          <span>{{ currentUser?.username }}</span>
+          <span>{{ currentTitle$ | async }}</span>
+          <span class="toolbar-spacer"></span>
+          <span>{{ (currentUser$ | async)?.username }}</span>
         </mat-toolbar>
         <div class="content">
           <router-outlet></router-outlet>
@@ -91,23 +99,26 @@ import { AuthService, User } from '../../services/auth.service';
   `]
 })
 export class LayoutComponent implements OnInit {
-  currentUser: User | null = null;
-  isAdmin = false;
+  currentUser$ = this.store.select(AuthSelectors.selectCurrentUser);
+  currentTitle$ = this.store.select(UiSelectors.selectCurrentTitle);
+  isAdmin$ = this.store.select(AuthSelectors.selectCurrentUser).pipe(
+    map((user: User | null) => user?.role === 'admin')
+  );
 
   constructor(
-    private authService: AuthService,
+    private store: Store<AppState>,
     private router: Router
   ) {}
 
   ngOnInit(): void {
-    this.authService.currentUser$.subscribe(user => {
-      this.currentUser = user;
-      this.isAdmin = user?.role === 'admin';
-    });
+    // Verificar si hay un usuario en el localStorage al iniciar
+    const storedUser = localStorage.getItem('currentUser');
+    if (storedUser) {
+      this.store.dispatch(AuthActions.setCurrentUser({ user: JSON.parse(storedUser) }));
+    }
   }
 
   logout(): void {
-    this.authService.logout();
-    this.router.navigate(['/login']);
+    this.store.dispatch(AuthActions.logout());
   }
 } 

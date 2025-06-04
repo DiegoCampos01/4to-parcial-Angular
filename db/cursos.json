@@ -1,0 +1,18 @@
+{
+  "cursos": [
+    {
+      "id": 1,
+      "nombre": "Matemáticas Básicas",
+      "descripcion": "Curso introductorio de matemáticas",
+      "duracion": 40,
+      "profesor": "Dr. Roberto Sánchez"
+    },
+    {
+      "id": 2,
+      "nombre": "Programación Web",
+      "descripcion": "Desarrollo web con HTML, CSS y JavaScript",
+      "duracion": 60,
+      "profesor": "Ing. Ana Martínez"
+    }
+  ]
+} 

@@ -1,14 +1,15 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, of, throwError } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { map, catchError, switchMap } from 'rxjs/operators';
 import { Usuario, RolUsuario } from '../models/usuario.model';
+import { API_CONFIG } from '../core/config/api.config';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private apiUrl = 'http://localhost:3001/usuarios';
+  private apiUrl = API_CONFIG.baseUrl + API_CONFIG.endpoints.usuarios;
   private usuarioActualSubject = new BehaviorSubject<Usuario | null>(null);
   usuarioActual$ = this.usuarioActualSubject.asObservable();
 
@@ -52,7 +53,7 @@ export class AuthService {
       return of(testUser);
     }
 
-    // Si no es un usuario de prueba, intentamos con la API
+    // Si no es un usuario de prueba, intentamos con mockapi
     return this.http.get<Usuario[]>(`${this.apiUrl}?email=${email}`).pipe(
       map(usuarios => {
         const usuario = usuarios[0];
@@ -61,6 +62,10 @@ export class AuthService {
           this.usuarioActualSubject.next(usuario);
           return usuario;
         }
+        throw new Error('Credenciales inválidas');
+      }),
+      catchError(error => {
+        console.error('Error al intentar login con mockapi:', error);
         throw new Error('Credenciales inválidas');
       })
     );
@@ -82,5 +87,15 @@ export class AuthService {
 
   getUsuarioActual(): Usuario | null {
     return this.usuarioActualSubject.value;
+  }
+
+  // Nuevo método para crear usuario en mockapi
+  createUsuario(usuario: Partial<Usuario>): Observable<Usuario> {
+    return this.http.post<Usuario>(this.apiUrl, usuario).pipe(
+      catchError(error => {
+        console.error('Error al crear usuario en mockapi:', error);
+        throw new Error('No se pudo crear el usuario');
+      })
+    );
   }
 } 

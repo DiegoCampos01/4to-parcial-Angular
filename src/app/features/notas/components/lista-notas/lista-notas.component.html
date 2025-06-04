@@ -18,8 +18,16 @@
     <ng-container matColumnDef="calificacion">
       <th mat-header-cell *matHeaderCellDef>Calificación</th>
       <td mat-cell *matCellDef="let nota">
-        <ng-container *ngIf="notaSeleccionada === nota; else mostrarCalificacion">
-          <mat-form-field appearance="outline">
+        <ng-container *ngIf="notaSeleccionada !== nota; else editarNota">
+          <span [class]="'nota-' + getColorNota(nota.calificacion)">
+            {{nota.calificacion !== null ? nota.calificacion.toFixed(1) : 'Sin calificar'}}
+          </span>
+          <button mat-icon-button (click)="seleccionarNota(nota)">
+            <mat-icon>edit</mat-icon>
+          </button>
+        </ng-container>
+        <ng-template #editarNota>
+          <mat-form-field appearance="outline" class="nota-input">
             <input matInput type="number" [(ngModel)]="nuevaNota" min="0" max="5" step="0.1">
           </mat-form-field>
           <button mat-icon-button color="primary" (click)="guardarNota()">
@@ -28,11 +36,6 @@
           <button mat-icon-button color="warn" (click)="cancelarEdicion()">
             <mat-icon>close</mat-icon>
           </button>
-        </ng-container>
-        <ng-template #mostrarCalificacion>
-          <span [ngClass]="getColorNota(nota.calificacion)">
-            {{nota.calificacion !== null ? nota.calificacion : 'Sin calificar'}}
-          </span>
         </ng-template>
       </td>
     </ng-container>
@@ -41,7 +44,7 @@
     <ng-container matColumnDef="estado">
       <th mat-header-cell *matHeaderCellDef>Estado</th>
       <td mat-cell *matCellDef="let nota">
-        <span [ngClass]="getColorNota(nota.calificacion)">
+        <span [class]="'estado-' + getColorNota(nota.calificacion)">
           {{nota.estado}}
         </span>
       </td>
@@ -51,7 +54,7 @@
     <ng-container matColumnDef="acciones">
       <th mat-header-cell *matHeaderCellDef>Acciones</th>
       <td mat-cell *matCellDef="let nota">
-        <button mat-icon-button color="primary" (click)="editarNota(nota)" *ngIf="notaSeleccionada !== nota">
+        <button mat-icon-button color="primary" (click)="seleccionarNota(nota)" *ngIf="notaSeleccionada !== nota">
           <mat-icon>edit</mat-icon>
         </button>
       </td>
@@ -60,4 +63,49 @@
     <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
     <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
   </table>
-</div> 
+</div>
+
+<style>
+  .container {
+    padding: 20px;
+  }
+
+  table {
+    width: 100%;
+  }
+
+  .nota-input {
+    width: 100px;
+    margin-right: 10px;
+  }
+
+  .nota-aprobado {
+    color: #4CAF50;
+    font-weight: bold;
+  }
+
+  .nota-reprobado {
+    color: #f44336;
+    font-weight: bold;
+  }
+
+  .nota-pendiente {
+    color: #9e9e9e;
+    font-style: italic;
+  }
+
+  .estado-aprobado {
+    color: #4CAF50;
+    font-weight: bold;
+  }
+
+  .estado-reprobado {
+    color: #f44336;
+    font-weight: bold;
+  }
+
+  .estado-pendiente {
+    color: #9e9e9e;
+    font-style: italic;
+  }
+</style> 

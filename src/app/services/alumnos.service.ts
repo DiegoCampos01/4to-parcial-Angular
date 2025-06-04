@@ -1,16 +1,24 @@
 import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable } from 'rxjs';
+import { ApiBaseService } from '../core/services/api-base.service';
 import { Alumno } from '../models/alumno.model';
+import { API_CONFIG } from '../core/config/api.config';
 
 @Injectable({
   providedIn: 'root'
 })
-export class AlumnosService {
+export class AlumnosService extends ApiBaseService<Alumno> {
   private readonly STORAGE_KEY = 'alumnos';
   private alumnosSubject = new BehaviorSubject<Alumno[]>([]);
 
-  constructor() {
+  constructor(http: HttpClient) {
+    super(http);
     this.cargarAlumnos();
+  }
+
+  protected getEndpoint(): string {
+    return API_CONFIG.endpoints.alumnos;
   }
 
   private cargarAlumnos(): void {
@@ -114,5 +122,9 @@ export class AlumnosService {
     });
     this.alumnosSubject.next(alumnos);
     this.guardarAlumnos();
+  }
+
+  getAlumnosPorCurso(cursoId: number): Observable<Alumno[]> {
+    return this.http.get<Alumno[]>(`${this.baseUrl}?cursoId=${cursoId}`);
   }
 } 
